@@ -17,14 +17,25 @@ func (m *model) add(id int) {
 	}
 }
 
-func (m *model) update(id, value int) {
+func (m *model) update(id int) {
 	data, ok := m.data[id]
 	if !ok {
 		m.add(id)
 		return
 	}
 
-	data.Count = value
+	data.Count += data.Count
+}
+
+func (m *model) refresh(id int) {
+	data, ok := m.data[id]
+	if !ok {
+		m.add(id)
+		return
+	}
+
+	data.Count = 0
+	data.ExpiresAt = time.Now()
 }
 
 // 0 - limit reached before expire time - not ok
@@ -50,7 +61,7 @@ func (m *model) check(data *DataModel) int {
 	}
 
 	if data.Count > m.limit {
-		return 0
+		return 3
 	}
 
 	return 1
@@ -70,15 +81,15 @@ func (m *model) Get(id int) int {
 		return http.StatusTooManyRequests
 
 	case 1:
-		m.update(id, data.Count+1)
+		m.update(id)
 		return http.StatusOK
 
 	case 2:
-		m.update(id, 0)
+		m.refresh(id)
 		return http.StatusTooManyRequests
 
 	case 3:
-		m.update(id, 0)
+		m.refresh(id)
 		return http.StatusOK
 
 	default:
